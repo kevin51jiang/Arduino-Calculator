@@ -5,6 +5,12 @@ VisualStudioVersion = 15.0.28307.645
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Arduino Midi", "Arduino Midi\Arduino Midi.vcxproj", "{C5F80730-F44F-4478-BDAE-6634EFC2CA88}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Keypad", "..\..\..\Arduino\libraries\Keypad\Keypad.vcxitems", "{8B6E7147-FF3B-4362-B241-81663DFE96EF}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "U8g2", "..\..\..\Arduino\libraries\U8g2\U8g2.vcxitems", "{01773626-E137-4FEB-AD9C-FE24244A2DA2}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Adafruit_SSD1306", "..\..\..\Arduino\libraries\Adafruit_SSD1306\Adafruit_SSD1306.vcxitems", "{920BE135-612B-4818-93B9-ECBB01613122}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86

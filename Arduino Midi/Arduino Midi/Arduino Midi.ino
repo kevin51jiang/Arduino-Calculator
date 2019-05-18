@@ -4,21 +4,51 @@
  Author:	Kevin J
 */
 
-// the setup function runs once when you press reset or power the board
-#include <MIDI.h>
+// Regsiters
+
+#include <splash.h>
+#include <Adafruit_SSD1306.h>
+#include <Keypad.h>
+#include <Key.h>
+#include <Adafruit_GFX.h>
+ 
+#define OLED_Address 0x3C
+Adafruit_SSD1306 oled(1);
+ 
 
 
-MIDI_CREATE_CUSTOM_INSTANCE();
+byte reg1 = B00000000,
+	reg2 = B00000000;
 
+// Interface with Display
+
+// Interface with keypad
+char checkKeypad() {
+
+}
+// Interface with adder
+
+//convert binary to integer
+
+int counter = 0;
 void setup() {
-	MIDI.begin(MIDI_CHANNEL_OMNI);  // Listen to all incoming messages
-
+	pinMode(2, INPUT_PULLUP);
+	oled.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
 }
 
 // the loop function runs over and over again until power down or reset
 void loop() {
-	// Send note 42 with velocity 127 on channel 1
-	MIDI.sendNoteOn(42, 127, 1);
-	delay(1000);
-	MIDI.read();
+	//char instruction = checkKeypad();
+	//if(instruction < )
+	oled.clearDisplay();
+	oled.setTextColor(WHITE);
+	oled.setCursor(0, 0);
+	oled.println(counter);
+	oled.display();
+
+	if (digitalRead(2) == LOW) {
+		counter++;
+	}
+
+	delay(1);//delay
 }
