@@ -24,6 +24,32 @@
 
 #define CALC_DELAY 50
 
+const byte ROWS = 4;
+const byte COLS = 4;
+
+char hexaKeys[ROWS][COLS] = {
+  {'1', '2', '3', 'A'},
+  {'4', '5', '6', 'B'},
+  {'7', '8', '9', 'C'},
+  {'+', '0', '=', 'D'}
+};
+
+//TO CHANGE
+byte rowPins[ROWS] = { 9, 8, 7, 6 };
+byte colPins[COLS] = { 5, 4, 3, 2 };
+
+Keypad keypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
+
+
+/*
+ Phases:
+ 0: choose the first number
+ 1: choose the second number
+ 2: add up the numbers 
+ */
+int phase = 0; 
+
+String num1 = "", num2 = "";
 
 template<class M, class N>
 struct Pair {
@@ -49,13 +75,6 @@ Adafruit_SSD1306 oled(1);
 
 byte reg1 = B00000000,
 	reg2 = B00000000;
-
-// Interface with Display
-
-// Interface with keypad
-char checkKeypad() {
-
-}
 
 
 int add(unsigned short num1, unsigned short num2) {
@@ -105,8 +124,6 @@ Pair<bool, bool> add_bits(bool a, bool b, bool cin) {
 
 
 //convert binary to integer
-
-int counter = 0;
 void setup() {
 	//button
 	pinMode(2, INPUT_PULLUP);
@@ -124,22 +141,64 @@ void setup() {
 	oled.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
 }
 
+
+
+
 // the loop function runs over and over again until power down or reset
 void loop() {
-
-
-
-	//char instruction = checkKeypad();
-	//if(instruction < )
 	oled.clearDisplay();
 	oled.setTextColor(WHITE);
-	oled.setCursor(0, 0);
-	oled.println(counter);
-	oled.display();
+	switch (phase) {
+		case 0:
+			oled.setCursor(0, 0);
+			oled.println(num1 + " + " + num2);
+			oled.setCursor(0, 20);
+			oled.println("Enter the first number: " + num1);
+			oled.display();
+			char command = keypad.getKey();
+			
+			//if there was a key pressed
+			if (command > 0) {
+				// Enters a keypad button
+				if (command >= '0' && command <= '9') {
+					num1 += command;
+				}
+				else if (command == '+') { //presses the + button
+					phase++;
+				}
+			}
+			break;
+		case 1:
+			oled.setCursor(0, 0);
+			oled.println(num1 + " + " + num2);
+			oled.setCursor(0, 20);
+			oled.println("Enter the first number: " + num1);
+			oled.display();
+			char command = keypad.getKey();
 
-	if (digitalRead(2) == LOW) {
-		counter++;
+			//if there was a key pressed
+			if (command > 0) {
+				// Enters a keypad button
+				if (command >= '0' && command <= '9') {
+					num2 += command;
+				}
+				else if (command == '+') { //presses the + button
+					phase++;
+				}
+			}
+			break;
+
+		case 2: //add
+			oled.setCursor(0, 0);
+			oled.println(num1 + " + " + num2 + " = ?");
+			oled.setCursor(0, 20);
+			oled.println("Adding...");
+			oled.display();
+			add(num1.toInt(), num2.toInt());
+			break;
+		case 3:
+			oled.setCursor(0, 0);
+			
 	}
-
-	delay(1);//delay
+	delay(2);
 }
