@@ -16,14 +16,16 @@
 #define OLED_Address 0x3C
 
 // Full Adder
-#define PIN_A 5
-#define PIN_B 6
-#define CARRY_IN 7
+#define PIN_A 2
+#define PIN_B 3
+#define CARRY_IN 4
 #define SUM A6
 #define CARRY_OUT  A7
 
-#define CALC_DELAY 50
+#define CALC_DELAY 1500
 
+// greater than ~1 volt
+#define ANALOG_READ_THRESH 200
 const byte ROWS = 4;
 const byte COLS = 4;
 
@@ -34,9 +36,9 @@ char hexaKeys[ROWS][COLS] = {
   {'+', '0', '=', 'D'}
 };
 
-//TO CHANGE
-byte rowPins[ROWS] = { 9, 8, 7, 6 };
-byte colPins[COLS] = { 5, 4, 3, 2 };
+// Pin Declarations for Keypad
+byte rowPins[ROWS] = { 12, 11, 10, 9 };
+byte colPins[COLS] = { 8, 7, 6, 5 };
 
 Keypad keypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
 
@@ -48,8 +50,9 @@ Keypad keypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
  2: add up the numbers 
  */
 int phase = 0; 
+int result = 0;
 
-String num1 = "", num2 = "";
+String num1 = "?", num2 = "?";
 
 template<class M, class N>
 struct Pair {
@@ -68,31 +71,9 @@ struct Pair {
 	const N second() const { return val_2; }
 };
 
-
+//init LCD display
 Adafruit_SSD1306 oled(1);
  
-
-int add(unsigned int num1, unsigned int num2) {
-	bool carry = 0;
-	unsigned int result = 0;
-
-	// run it through the adder a max of 32 times (maximum size of an integer)
-	for (int i = 0; i < 32; i++) {
-		Pair<bool, bool> temp_pair = add_bits(bitRead(num1, i), bitRead(num2, i), carry);
-		if (temp_pair.first() == 1) {
-			bitSet(result, i);
-		}
-		carry = temp_pair.second();
-	}
-
-	//make it impossible to overflow
-	if (carry == 1) {
-		bitSet(result, 32);
-	}
-
-	return result;
-}
-
 
 // Interface with adder
 // Returns Pair<Sum, Carry>
@@ -105,8 +86,12 @@ Pair<bool, bool> add_bits(bool a, bool b, bool cin) {
 
 	//wait so that transistors have time to process
 	delay(CALC_DELAY);
-	
-	Pair<bool, bool> results(digitalRead(SUM), digitalRead(CARRY_OUT));
+
+	//read in values and assign to pair
+	Pair<bool, bool> results((analogRead(SUM) > ANALOG_READ_THRESH) ? true : false, 
+								(analogRead(CARRY_OUT) > ANALOG_READ_THRESH) ? true : false);
+
+	//Pair<bool, bool> results(digitalRead(SUM), digitalRead(CARRY_OUT));
 
 	delay(CALC_DELAY / 2);
 
@@ -120,10 +105,57 @@ Pair<bool, bool> add_bits(bool a, bool b, bool cin) {
 }
 
 
+int add(int num1, int num2) {
+	bool carry = 0;
+	unsigned int result = 0;
+
+	// run it through the adder a max of 32 times (maximum size of an integer)
+	for (int i = 0; i < 32; i++) {
+		Pair<bool, bool> temp_pair = add_bits(bitRead(num1, i), bitRead(num2, i), carry);
+		if (temp_pair.first() == 1) {
+			bitSet(result, i);
+		}
+		carry = temp_pair.second();
+
+
+		/*
+		DEBUG
+		*/
+
+		Serial.print(i);
+		Serial.print(" / ");
+
+		Serial.print(bitRead(num1, i));
+		Serial.print(", ");
+		Serial.print(bitRead(num2, i));
+		Serial.print(", ");
+		Serial.print(carry);
+
+		Serial.print(" / ");
+
+		Serial.print(temp_pair.first());
+		Serial.print(", ");
+		Serial.print(temp_pair.second());
+		
+		Serial.print(" / ");
+
+		Serial.print(result);
+		
+		Serial.println(' ');
+	}
+
+	//make it impossible to overflow
+	if (carry == 1) {
+		bitSet(result, 32);
+	}
+
+	return result;
+}
+
+
 //convert binary to integer
 void setup() {
-	//button
-	pinMode(2, INPUT_PULLUP);
+	Serial.begin(9600);
 
 	//adder input
 	pinMode(PIN_A, OUTPUT);
@@ -134,6 +166,8 @@ void setup() {
 	pinMode(SUM, INPUT);
 	pinMode(CARRY_OUT, INPUT);
 
+
+
 	//oled
 	oled.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
 }
@@ -143,25 +177,40 @@ void setup() {
 
 // the loop function runs over and over again until power down or reset
 void loop() {
+	char command;
 	oled.clearDisplay();
 	oled.setTextColor(WHITE);
+
+
 	switch (phase) {
 		case 0:
 			oled.setCursor(0, 0);
 			oled.println(num1 + " + " + num2);
 			oled.setCursor(0, 20);
-			oled.println("Enter the first number: " + num1);
+			command = keypad.getKey();
+			oled.println(command);
+			//oled.println("Enter the first number: " + num1);
 			oled.display();
-			char command = keypad.getKey();
 			
+			//Serial.println(command);
+
+			delay(100);
+
 			//if there was a key pressed
 			if (command > 0) {
 				// Enters a keypad button
 				if (command >= '0' && command <= '9') {
-					num1 += command;
+					if (num1.equals("?")) {
+						num1 = String(command);
+					} else {
+						num1 += command;
+					}
 				}
 				else if (command == '+') { //presses the + button
 					phase++;
+					if (num1.equals("?")) {
+						num1 = "0";
+					}
 				}
 			}
 			break;
@@ -169,18 +218,30 @@ void loop() {
 			oled.setCursor(0, 0);
 			oled.println(num1 + " + " + num2);
 			oled.setCursor(0, 20);
-			oled.println("Enter the first number: " + num1);
+			//oled.println("Enter the first number: " + num1);
+			command = keypad.getKey();
+			oled.println(command);
 			oled.display();
-			char command = keypad.getKey();
-
+			
+			//delay
+			delay(100);
+			
 			//if there was a key pressed
 			if (command > 0) {
 				// Enters a keypad button
 				if (command >= '0' && command <= '9') {
-					num2 += command;
+					if (num2.equals("?")) {
+						num2 = String(command);
+					}
+					else {
+						num2 += command;
+					}
 				}
 				else if (command == '+') { //presses the + button
 					phase++;
+					if (num2.equals("?")) {
+						num2 = "0";
+					}
 				}
 			}
 			break;
@@ -191,11 +252,21 @@ void loop() {
 			oled.setCursor(0, 20);
 			oled.println("Adding...");
 			oled.display();
-			add(num1.toInt(), num2.toInt());
+			result = add(num1.toInt(), num2.toInt());
+			phase++;
 			break;
 		case 3:
 			oled.setCursor(0, 0);
-			
+			oled.println(num1 + " + " + num2 + " = " + result);
+			oled.display();
+			delay(2000);
+
+			//reset
+			phase = 0;
+			num1 = "?";
+			num2 = "?";
+			result = 0;
+			break;
 	}
 	delay(2);
 }
