@@ -19,8 +19,8 @@
 #define PIN_A 5
 #define PIN_B 6
 #define CARRY_IN 7
-#define SUM 8
-#define CARRY_OUT  9
+#define SUM A6
+#define CARRY_OUT  A7
 
 #define CALC_DELAY 50
 
@@ -72,15 +72,11 @@ struct Pair {
 Adafruit_SSD1306 oled(1);
  
 
-
-byte reg1 = B00000000,
-	reg2 = B00000000;
-
-
-int add(unsigned short num1, unsigned short num2) {
-	//convert to twos complement
+int add(unsigned int num1, unsigned int num2) {
 	bool carry = 0;
-	unsigned short result = 0;
+	unsigned int result = 0;
+
+	// run it through the adder a max of 32 times (maximum size of an integer)
 	for (int i = 0; i < 32; i++) {
 		Pair<bool, bool> temp_pair = add_bits(bitRead(num1, i), bitRead(num2, i), carry);
 		if (temp_pair.first() == 1) {
@@ -88,6 +84,7 @@ int add(unsigned short num1, unsigned short num2) {
 		}
 		carry = temp_pair.second();
 	}
+
 	//make it impossible to overflow
 	if (carry == 1) {
 		bitSet(result, 32);
