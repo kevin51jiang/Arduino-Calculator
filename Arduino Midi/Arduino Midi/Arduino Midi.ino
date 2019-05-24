@@ -12,23 +12,25 @@
 #include <Key.h>
 #include <Adafruit_GFX.h>
 
- 
+// I2C address of the OLED LCD
 #define OLED_Address 0x3C
 
-// Full Adder
+// Full Adder Pin Configs
 #define PIN_A 2
 #define PIN_B 3
 #define CARRY_IN 4
 #define SUM A6
 #define CARRY_OUT  A7
 
-#define CALC_DELAY 1500
+// Time delay between each calculation in ms
+#define CALC_DELAY 500
 
 // greater than ~1 volt
 #define ANALOG_READ_THRESH 200
 const byte ROWS = 4;
 const byte COLS = 4;
 
+// declare key values
 char hexaKeys[ROWS][COLS] = {
   {'1', '2', '3', 'A'},
   {'4', '5', '6', 'B'},
@@ -40,6 +42,7 @@ char hexaKeys[ROWS][COLS] = {
 byte rowPins[ROWS] = { 12, 11, 10, 9 };
 byte colPins[COLS] = { 8, 7, 6, 5 };
 
+//instantiate keypad object
 Keypad keypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
 
 
@@ -48,12 +51,19 @@ Keypad keypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
  0: choose the first number
  1: choose the second number
  2: add up the numbers 
+ 3: display result
  */
 int phase = 0; 
+
+//variable for result
 int result = 0;
 
+//variables for the 2 operands
 String num1 = "?", num2 = "?";
 
+
+// template for the reimplementation of the Pair class from normal C++
+// https://github.com/zacsketches/Arduino_pair
 template<class M, class N>
 struct Pair {
 	M val_1;
@@ -91,8 +101,7 @@ Pair<bool, bool> add_bits(bool a, bool b, bool cin) {
 	Pair<bool, bool> results((analogRead(SUM) > ANALOG_READ_THRESH) ? true : false, 
 								(analogRead(CARRY_OUT) > ANALOG_READ_THRESH) ? true : false);
 
-	//Pair<bool, bool> results(digitalRead(SUM), digitalRead(CARRY_OUT));
-
+	// wait even more
 	delay(CALC_DELAY / 2);
 
 	//cleanup
@@ -104,17 +113,23 @@ Pair<bool, bool> add_bits(bool a, bool b, bool cin) {
 	return results;
 }
 
-
+// adds 2 integers
 int add(int num1, int num2) {
+	//by default, everything is 0
 	bool carry = 0;
-	unsigned int result = 0;
+	int result = 0;
 
 	// run it through the adder a max of 32 times (maximum size of an integer)
 	for (int i = 0; i < 32; i++) {
+		// use the add_bits function to add each bit read from the operands
 		Pair<bool, bool> temp_pair = add_bits(bitRead(num1, i), bitRead(num2, i), carry);
+
+		// if the sum is 1, then set the result's bit at index i to true
 		if (temp_pair.first() == 1) {
 			bitSet(result, i);
 		}
+
+		// set the carry boolean to the carry parameter that's returned from adding
 		carry = temp_pair.second();
 
 
@@ -143,6 +158,7 @@ int add(int num1, int num2) {
 		
 		Serial.println(' ');
 	}
+	//END DEBUG
 
 	//make it impossible to overflow
 	if (carry == 1) {
@@ -155,6 +171,7 @@ int add(int num1, int num2) {
 
 //convert binary to integer
 void setup() {
+	//for serial communication
 	Serial.begin(9600);
 
 	//adder input
@@ -165,8 +182,6 @@ void setup() {
 	//adder output
 	pinMode(SUM, INPUT);
 	pinMode(CARRY_OUT, INPUT);
-
-
 
 	//oled
 	oled.begin(SSD1306_SWITCHCAPVCC, OLED_Address);
@@ -183,90 +198,90 @@ void loop() {
 
 
 	switch (phase) {
-		case 0:
+		case 0: // for 1st number
+			//get info and print out current status
 			oled.setCursor(0, 0);
 			oled.println(num1 + " + " + num2);
 			oled.setCursor(0, 20);
-			command = keypad.getKey();
+			command = keypad.getKey(); // get whatever key is pressed (if applicable)
 			oled.println(command);
-			//oled.println("Enter the first number: " + num1);
 			oled.display();
 			
-			//Serial.println(command);
-
+			//allow user to see whatever was entered
 			delay(100);
 
 			//if there was a key pressed
 			if (command > 0) {
-				// Enters a keypad button
-				if (command >= '0' && command <= '9') {
-					if (num1.equals("?")) {
+				
+				if (command >= '0' && command <= '9') { // Entered a number
+					if (num1.equals("?")) { //if results is currently "?", replace it with whatever number is entered
 						num1 = String(command);
-					} else {
+					} else { // or else concatenate it to the end
 						num1 += command;
 					}
-				}
-				else if (command == '+') { //presses the + button
+				} else if (command == '+') { //presses the + button
 					phase++;
-					if (num1.equals("?")) {
+					if (num1.equals("?")) { //if no number has been entered, set it to the default value of 0
 						num1 = "0";
 					}
 				}
 			}
 			break;
-		case 1:
+		case 1: // for 2nd operand
+			//get info and print out current status
 			oled.setCursor(0, 0);
 			oled.println(num1 + " + " + num2);
 			oled.setCursor(0, 20);
-			//oled.println("Enter the first number: " + num1);
-			command = keypad.getKey();
+			command = keypad.getKey();// get whatever key is pressed (if applicable)
 			oled.println(command);
 			oled.display();
 			
-			//delay
+			//allow user to see whatever was entered
 			delay(100);
 			
 			//if there was a key pressed
 			if (command > 0) {
-				// Enters a keypad button
-				if (command >= '0' && command <= '9') {
-					if (num2.equals("?")) {
+
+				if (command >= '0' && command <= '9') { //user enteres a number 
+
+					//replaces the "?" with entry, or concatenates it
+					if (num2.equals("?")) { 
 						num2 = String(command);
-					}
-					else {
+					} else {
 						num2 += command;
 					}
-				}
-				else if (command == '+') { //presses the + button
-					phase++;
-					if (num2.equals("?")) {
+				} else if (command == '+') { //presses the + button
+					if (num2.equals("?")) { //if no number has been entered, set it to the default value of 0
 						num2 = "0";
 					}
+
+					phase++;
 				}
 			}
 			break;
 
-		case 2: //add
+		case 2: //add the actual numbers
 			oled.setCursor(0, 0);
 			oled.println(num1 + " + " + num2 + " = ?");
 			oled.setCursor(0, 20);
 			oled.println("Adding...");
-			oled.display();
-			result = add(num1.toInt(), num2.toInt());
-			phase++;
+			oled.display(); //display message to show that it is in the process of adding
+
+
+			result = add(num1.toInt(), num2.toInt()); //add the numbers, and assign it to global var result
+			phase++; // continue to next stage
 			break;
 		case 3:
 			oled.setCursor(0, 0);
 			oled.println(num1 + " + " + num2 + " = " + result);
 			oled.display();
-			delay(2000);
+			delay(2000); //display all the operands and the sum
 
-			//reset
+			//reset everything to default state so that it can be used again
 			phase = 0;
 			num1 = "?";
 			num2 = "?";
 			result = 0;
 			break;
 	}
-	delay(2);
 }
