@@ -56,7 +56,7 @@ Keypad keypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
 int phase = 0; 
 
 //variable for result
-int result = 0;
+long result = 0;
 
 //variables for the 2 operands
 String num1 = "?", num2 = "?";
@@ -113,16 +113,25 @@ Pair<bool, bool> add_bits(bool a, bool b, bool cin) {
 	return results;
 }
 
-// adds 2 integers
-int add(int num1, int num2) {
-	//by default, everything is 0
-	bool carry = 0;
+long add(char *num1, char *num2) {
 	int result = 0;
+	int max_len = max(strlen(num1), strlen(num2));
+	bool carry = false;
 
-	// run it through the adder a max of 32 times (maximum size of an integer)
-	for (int i = 0; i < 32; i++) {
+	for (int i = 0; i < max_len; i++) {
 		// use the add_bits function to add each bit read from the operands
-		Pair<bool, bool> temp_pair = add_bits(bitRead(num1, i), bitRead(num2, i), carry);
+
+		bool a = false, b = false;
+
+		if (i < strlen(num1)) {
+			a = num1[i];
+		}
+
+		if (i < strlen(num2)) {
+			b = num2[i];
+		}
+
+		Pair<bool, bool> temp_pair = add_bits(a, b, carry);
 
 		// if the sum is 1, then set the result's bit at index i to true
 		if (temp_pair.first() == 1) {
@@ -132,42 +141,66 @@ int add(int num1, int num2) {
 		// set the carry boolean to the carry parameter that's returned from adding
 		carry = temp_pair.second();
 
-
-		/*
-		DEBUG
-		*/
-
-		Serial.print(i);
-		Serial.print(" / ");
-
-		Serial.print(bitRead(num1, i));
-		Serial.print(", ");
-		Serial.print(bitRead(num2, i));
-		Serial.print(", ");
-		Serial.print(carry);
-
-		Serial.print(" / ");
-
-		Serial.print(temp_pair.first());
-		Serial.print(", ");
-		Serial.print(temp_pair.second());
-		
-		Serial.print(" / ");
-
-		Serial.print(result);
-		
-		Serial.println(' ');
 	}
-	//END DEBUG
-
-	//make it impossible to overflow
-	if (carry == 1) {
-		bitSet(result, 32);
-	}
-
 	return result;
 }
 
+//
+//// adds 2 integers
+//int add(int num1, int num2) {
+//	//by default, everything is 0
+//	bool carry = 0;
+//	int result = 0;
+//
+//	// run it through the adder a max of 32 times (maximum size of an integer)
+//	for (int i = 0; i < 32; i++) {
+//		// use the add_bits function to add each bit read from the operands
+//		Pair<bool, bool> temp_pair = add_bits(bitRead(num1, i), bitRead(num2, i), carry);
+//
+//		// if the sum is 1, then set the result's bit at index i to true
+//		if (temp_pair.first() == 1) {
+//			bitSet(result, i);
+//		}
+//
+//		// set the carry boolean to the carry parameter that's returned from adding
+//		carry = temp_pair.second();
+//
+//
+//		/*
+//		DEBUG
+//		*/
+//
+//		Serial.print(i);
+//		Serial.print(" / ");
+//
+//		Serial.print(bitRead(num1, i));
+//		Serial.print(", ");
+//		Serial.print(bitRead(num2, i));
+//		Serial.print(", ");
+//		Serial.print(carry);
+//
+//		Serial.print(" / ");
+//
+//		Serial.print(temp_pair.first());
+//		Serial.print(", ");
+//		Serial.print(temp_pair.second());
+//		
+//		Serial.print(" / ");
+//
+//		Serial.print(result);
+//		
+//		Serial.println(' ');
+//	}
+//	//END DEBUG
+//
+//	//make it impossible to overflow
+//	if (carry == 1) {
+//		bitSet(result, 32);
+//	}
+//
+//	return result;
+//}
+//
 
 //convert binary to integer
 void setup() {
@@ -250,7 +283,7 @@ void loop() {
 					} else {
 						num2 += command;
 					}
-				} else if (command == '+') { //presses the + button
+				} else if (command == '=') { //presses the = button
 					if (num2.equals("?")) { //if no number has been entered, set it to the default value of 0
 						num2 = "0";
 					}
@@ -267,8 +300,12 @@ void loop() {
 			oled.println("Adding...");
 			oled.display(); //display message to show that it is in the process of adding
 
+		
+			//conver to binary and then char array
+			const char *operand1 = String(num1.toInt(), BIN).c_str();
+			const char *operand2 = String(num2.toInt(), BIN).c_str();
 
-			result = add(num1.toInt(), num2.toInt()); //add the numbers, and assign it to global var result
+			result = add(operand1, operand2); //add the numbers, and assign it to global var result
 			phase++; // continue to next stage
 			break;
 		case 3:
