@@ -4,7 +4,6 @@
  Author:	Kevin J
 */
 
-// Regsiters
 
 #include <splash.h>
 #include <Adafruit_SSD1306.h>
@@ -19,8 +18,8 @@
 #define PIN_A 2
 #define PIN_B 3
 #define CARRY_IN 4
-#define SUM A6
-#define CARRY_OUT  A7
+#define CARRY_OUT  A6
+#define SUM A7
 
 // Time delay between each calculation in ms
 #define CALC_DELAY 500
@@ -50,10 +49,10 @@ Keypad keypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
  Phases:
  0: choose the first number
  1: choose the second number
- 2: add up the numbers 
+ 2: add up the numbers
  3: display result
  */
-int phase = 0; 
+int phase = 0;
 
 //variable for result
 long result = 0;
@@ -83,7 +82,7 @@ struct Pair {
 
 //init LCD display
 Adafruit_SSD1306 oled(1);
- 
+
 
 // Interface with adder
 // Returns Pair<Sum, Carry>
@@ -98,10 +97,10 @@ Pair<bool, bool> add_bits(bool a, bool b, bool cin) {
 	delay(CALC_DELAY);
 
 	//read in values and assign to pair
-	Pair<bool, bool> results((analogRead(SUM) > ANALOG_READ_THRESH) ? true : false, 
-								(analogRead(CARRY_OUT) > ANALOG_READ_THRESH) ? true : false);
+	Pair<bool, bool> results((analogRead(SUM) > ANALOG_READ_THRESH) ? true : false,
+		(analogRead(CARRY_OUT) > ANALOG_READ_THRESH) ? true : false);
 
-	// wait even more
+	// wait for even longer
 	delay(CALC_DELAY / 2);
 
 	//cleanup
@@ -113,94 +112,62 @@ Pair<bool, bool> add_bits(bool a, bool b, bool cin) {
 	return results;
 }
 
-long add(char *num1, char *num2) {
-	int result = 0;
-	int max_len = max(strlen(num1), strlen(num2));
-	bool carry = false;
+// adds 2 integers
+long add(long num1, long num2) {
+	//by default, everything is 0
+	bool carry = 0;
+	long results = 0;
 
-	for (int i = 0; i < max_len; i++) {
+	// run it through the adder a max of 32 times (maximum size of an integer)
+	for (int i = 0; i < 32; i++) {
 		// use the add_bits function to add each bit read from the operands
-
-		bool a = false, b = false;
-
-		if (i < strlen(num1)) {
-			a = num1[i];
-		}
-
-		if (i < strlen(num2)) {
-			b = num2[i];
-		}
-
-		Pair<bool, bool> temp_pair = add_bits(a, b, carry);
+		Pair<bool, bool> temp_pair = add_bits(bitRead(num1, i), bitRead(num2, i), carry);
 
 		// if the sum is 1, then set the result's bit at index i to true
 		if (temp_pair.first() == 1) {
-			bitSet(result, i);
+			bitSet(results, i);
 		}
 
 		// set the carry boolean to the carry parameter that's returned from adding
 		carry = temp_pair.second();
 
+
+		/*
+		DEBUG
+		*/
+
+		Serial.print(i);
+		Serial.print(" / ");
+
+		Serial.print(bitRead(num1, i));
+		Serial.print(", ");
+		Serial.print(bitRead(num2, i));
+		Serial.print(", ");
+		Serial.print(carry);
+
+		Serial.print(" / ");
+
+		Serial.print(temp_pair.first());
+		Serial.print(", ");
+		Serial.print(temp_pair.second());
+		
+		Serial.print(" / ");
+
+		Serial.print(results);
+		
+		Serial.println(' ');
 	}
-	return result;
+	//END DEBUG
+
+	//make it impossible to overflow
+	if (carry == 1) {
+		bitSet(results, 32);
+	}
+	Serial.print("TOTAL: ");
+	Serial.println(results);
+	return results;
 }
 
-//
-//// adds 2 integers
-//int add(int num1, int num2) {
-//	//by default, everything is 0
-//	bool carry = 0;
-//	int result = 0;
-//
-//	// run it through the adder a max of 32 times (maximum size of an integer)
-//	for (int i = 0; i < 32; i++) {
-//		// use the add_bits function to add each bit read from the operands
-//		Pair<bool, bool> temp_pair = add_bits(bitRead(num1, i), bitRead(num2, i), carry);
-//
-//		// if the sum is 1, then set the result's bit at index i to true
-//		if (temp_pair.first() == 1) {
-//			bitSet(result, i);
-//		}
-//
-//		// set the carry boolean to the carry parameter that's returned from adding
-//		carry = temp_pair.second();
-//
-//
-//		/*
-//		DEBUG
-//		*/
-//
-//		Serial.print(i);
-//		Serial.print(" / ");
-//
-//		Serial.print(bitRead(num1, i));
-//		Serial.print(", ");
-//		Serial.print(bitRead(num2, i));
-//		Serial.print(", ");
-//		Serial.print(carry);
-//
-//		Serial.print(" / ");
-//
-//		Serial.print(temp_pair.first());
-//		Serial.print(", ");
-//		Serial.print(temp_pair.second());
-//		
-//		Serial.print(" / ");
-//
-//		Serial.print(result);
-//		
-//		Serial.println(' ');
-//	}
-//	//END DEBUG
-//
-//	//make it impossible to overflow
-//	if (carry == 1) {
-//		bitSet(result, 32);
-//	}
-//
-//	return result;
-//}
-//
 
 //convert binary to integer
 void setup() {
@@ -231,94 +198,94 @@ void loop() {
 
 
 	switch (phase) {
-		case 0: // for 1st number
-			//get info and print out current status
-			oled.setCursor(0, 0);
-			oled.println(num1 + " + " + num2);
-			oled.setCursor(0, 20);
-			command = keypad.getKey(); // get whatever key is pressed (if applicable)
-			oled.println(command);
-			oled.display();
-			
-			//allow user to see whatever was entered
-			delay(100);
+	case 0: // for 1st number
+		//get info and print out current status
+		oled.setCursor(0, 0);
+		oled.println(num1 + " + " + num2);
+		oled.setCursor(0, 20);
+		command = keypad.getKey(); // get whatever key is pressed (if applicable)
+		oled.println(command);
+		oled.display();
 
-			//if there was a key pressed
-			if (command > 0) {
-				
-				if (command >= '0' && command <= '9') { // Entered a number
-					if (num1.equals("?")) { //if results is currently "?", replace it with whatever number is entered
-						num1 = String(command);
-					} else { // or else concatenate it to the end
-						num1 += command;
-					}
-				} else if (command == '+') { //presses the + button
-					phase++;
-					if (num1.equals("?")) { //if no number has been entered, set it to the default value of 0
-						num1 = "0";
-					}
+		//allow user to see whatever was entered
+		delay(100);
+
+		//if there was a key pressed
+		if (command > 0) {
+
+			if (command >= '0' && command <= '9') { // Entered a number
+				if (num1.equals("?")) { //if results is currently "?", replace it with whatever number is entered
+					num1 = String(command);
+				}
+				else { // or else concatenate it to the end
+					num1 += command;
 				}
 			}
-			break;
-		case 1: // for 2nd operand
-			//get info and print out current status
-			oled.setCursor(0, 0);
-			oled.println(num1 + " + " + num2);
-			oled.setCursor(0, 20);
-			command = keypad.getKey();// get whatever key is pressed (if applicable)
-			oled.println(command);
-			oled.display();
-			
-			//allow user to see whatever was entered
-			delay(100);
-			
-			//if there was a key pressed
-			if (command > 0) {
-
-				if (command >= '0' && command <= '9') { //user enteres a number 
-
-					//replaces the "?" with entry, or concatenates it
-					if (num2.equals("?")) { 
-						num2 = String(command);
-					} else {
-						num2 += command;
-					}
-				} else if (command == '=') { //presses the = button
-					if (num2.equals("?")) { //if no number has been entered, set it to the default value of 0
-						num2 = "0";
-					}
-
-					phase++;
+			else if (command == '+') { //presses the + button
+				phase++;
+				if (num1.equals("?")) { //if no number has been entered, set it to the default value of 0
+					num1 = "0";
 				}
 			}
-			break;
+		}
+		break;
 
-		case 2: //add the actual numbers
-			oled.setCursor(0, 0);
-			oled.println(num1 + " + " + num2 + " = ?");
-			oled.setCursor(0, 20);
-			oled.println("Adding...");
-			oled.display(); //display message to show that it is in the process of adding
+	case 1: // for 2nd operand
+		//get info and print out current status
+		oled.setCursor(0, 0);
+		oled.println(num1 + " + " + num2);
+		oled.setCursor(0, 20);
+		command = keypad.getKey();// get whatever key is pressed (if applicable)
+		oled.println(command);
+		oled.display();
 
-		
-			//conver to binary and then char array
-			const char *operand1 = String(num1.toInt(), BIN).c_str();
-			const char *operand2 = String(num2.toInt(), BIN).c_str();
+		//allow user to see whatever was entered
+		delay(100);
 
-			result = add(operand1, operand2); //add the numbers, and assign it to global var result
-			phase++; // continue to next stage
-			break;
-		case 3:
-			oled.setCursor(0, 0);
-			oled.println(num1 + " + " + num2 + " = " + result);
-			oled.display();
-			delay(2000); //display all the operands and the sum
+		//if there was a key pressed
+		if (command > 0) {
 
-			//reset everything to default state so that it can be used again
-			phase = 0;
-			num1 = "?";
-			num2 = "?";
-			result = 0;
-			break;
+			if (command >= '0' && command <= '9') { //user enteres a number 
+
+				//replaces the "?" with entry, or concatenates it
+				if (num2.equals("?")) {
+					num2 = String(command);
+				} else {
+					num2 += command;
+				}
+			}
+			else if (command == '=') { //presses the = button
+				if (num2.equals("?")) { //if no number has been entered, set it to the default value of 0
+					num2 = "0";
+				}
+
+				phase++;
+			}
+		}
+		break;
+
+	case 2: //add the actual numbers
+		oled.setCursor(0, 0);
+		oled.println(num1 + " + " + num2 + " = ?");
+		oled.setCursor(0, 20);
+		oled.println("Adding...");
+		oled.display(); //display message to show that it is in the process of adding
+
+		//convert operands to longs (toInt returns a long) and add them using the full adder
+		result = add(num1.toInt(), num2.toInt()); 
+		phase++; // continue to next stage
+		break;
+	case 3:
+		oled.setCursor(0, 0);
+		oled.println(num1 + " + " + num2 + " = " + result);
+		oled.display();
+		delay(3000); //display all the operands and the sum for 3 seconds
+
+		//reset everything to default state so that it can be used again
+		phase = 0;
+		num1 = "?";
+		num2 = "?";
+		result = 0;
+		break;
 	}
 }
