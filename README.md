@@ -1,2 +1,2 @@
-# TEJ4M-Arduino-Keyboard
-MIDI Keyboard made with Arduino nano that interfaces with any windows MIDI software.
+# Arduino Calculator
+Simple arduino calculator that can add. Does the adding on a dedicated hardware circuit (full adder).
